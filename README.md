@@ -1,3 +1,26 @@
+# Apache Spark with Docker on Windows
+
+This README explains how to run **Apache Spark** using **Docker Compose** on **Windows**, access Spark UIs, and practice core Spark concepts such as **RDD transformations, actions, shuffle, caching, and persistence**.
+
+---
+
+## Prerequisites
+
+- Windows 10 / 11
+- Docker Desktop (WSL2 enabled)
+- Docker Compose
+
+---
+
+## Docker Cleanup (Optional)
+
+```bash
+docker-compose down
+docker system prune -f
+
+
+
+
 docker-compose down
 docker system prune -f
 
@@ -71,5 +94,6 @@ rdd.map(lambda x: x + 1).filter(lambda x: x > 10).count()
 
 # Wide
 rdd.map(lambda x: (x % 5, x)).groupByKey().count()
+
 
 
