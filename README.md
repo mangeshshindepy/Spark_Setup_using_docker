@@ -1,159 +1,112 @@
-# Apache Spark with Docker on Windows
+# Apache Spark Docker Exam Cheat Sheet (Windows)
 
-This README explains how to run Apache Spark using Docker Compose on Windows,
-access Spark UIs, and practice core Spark concepts such as RDD transformations,
-actions, shuffle, caching, and persistence.
+Run Spark using Docker Compose on Windows and practice RDD, DataFrame, and SQL concepts commonly tested in exams.
 
-===============================================================================
+Prerequisites
+Windows 10/11
+Docker Desktop (WSL2 enabled)
+Docker Compose
 
-PREREQUISITES
-
-- Windows 10 / 11
-- Docker Desktop (WSL2 enabled)
-- Docker Compose
-
-===============================================================================
-
-DOCKER CLEANUP (OPTIONAL)
-
+Docker commands
 docker-compose down
 docker system prune -f
-
-===============================================================================
-
-BUILD AND START SPARK CLUSTER
-
 docker compose up --build
-OR
 docker-compose up --build
 
-===============================================================================
-
-ACCESS SPARK CONTAINERS
-
-START PYSPARK SHELL
-
+Spark shell
 docker exec -it spark-master pyspark --master spark://spark-master:7077
-
-ACCESS SPARK MASTER CONTAINER (NO REBUILD)
-
 docker exec -it spark-master bash
 
-===============================================================================
+Spark UIs
+Master UI  http://localhost:8080
+Worker UI  http://localhost:8081
+Spark UI   http://localhost:4040
 
-SPARK WEB UIs
-
-MASTER UI  : http://localhost:8080
-WORKER UI  : http://localhost:8081
-SPARK UI   : http://localhost:4040
-
-===============================================================================
-
-SPARK CONFIGURATION (LEARNING MODE)
-
-Disable Adaptive Query Execution (AQE) to clearly observe shuffles and stages
-
+Spark config (disable AQE for learning stages)
 spark.conf.set("spark.sql.adaptive.enabled", "false")
 
-===============================================================================
+RDD BASICS
 
-SPARK RDD EXAMPLES
-
-BASE RDD – LAZY EVALUATION
-
+Create RDD (lazy)
 rdd = sc.parallelize(range(1, 1000001), 4)
 
--------------------------------------------------------------------------------
+Narrow transformations (no shuffle)
+rdd.map(lambda x: x * 2)
+rdd.filter(lambda x: x % 2 == 0)
 
-NARROW TRANSFORMATIONS (NO SHUFFLE)
+Action (triggers job)
+rdd.count()
+rdd.collect()
+rdd.take(10)
 
-mapped = rdd.map(lambda x: x * 2)
-filtered = mapped.filter(lambda x: x % 3 == 0)
+Wide transformations (shuffle)
+rdd.map(lambda x: (x % 10, 1)).groupByKey()
+rdd.map(lambda x: (x % 10, 1)).reduceByKey(lambda a, b: a + b)
 
--------------------------------------------------------------------------------
+Prefer reduceByKey over groupByKey (exam rule)
 
-ACTION – TRIGGERS JOB + STAGE + TASKS
+Cache and persist
+rdd.cache()
+rdd.persist()
+rdd.persist(StorageLevel.MEMORY_AND_DISK)
+rdd.unpersist()
 
-count = filtered.count()
-print(count)
+RDD Exam Notes
+Transformations are lazy
+Actions trigger jobs
+Narrow = single stage
+Wide = shuffle + multiple stages
+Cache only if reused
+Shuffles are expensive
 
--------------------------------------------------------------------------------
+DATAFRAME BASICS
 
-WIDE TRANSFORMATION (SHUFFLE HAPPENS)
+Create DataFrame
+df = spark.range(1, 1000001)
 
-pairs = rdd.map(lambda x: (x % 10, 1))
-grouped = pairs.reduceByKey(lambda a, b: a + b)
+Schema
+df.printSchema()
 
--------------------------------------------------------------------------------
+Select
+df.select("id")
+df.selectExpr("id", "id * 2 as double_id")
 
-ACTION – OBSERVE SHUFFLE IN SPARK UI
+Filter
+df.filter(df.id > 100)
+df.where("id > 100")
 
-result = grouped.collect()
-print(result)
+Aggregation
+df.groupBy(df.id % 10).count()
 
-===============================================================================
+Actions
+df.show()
+df.count()
+df.collect()
 
-CACHING AND PERSISTENCE
+DataFrame Exam Notes
+DataFrames are optimized (Catalyst + Tungsten)
+Prefer DataFrame over RDD when possible
+Operations are lazy
+Actions trigger execution
 
-CACHE() – MEMORY ONLY (LAZY)
+SPARK SQL
 
-cached_rdd = grouped.cache()
-cached_rdd.count()
+Create temp view
+df.createOrReplaceTempView("numbers")
 
-REUSE CACHED RDD (NO RECOMPUTATION)
+Run SQL
+spark.sql("SELECT * FROM numbers WHERE id > 100").show()
+spark.sql("SELECT id % 10 AS key, COUNT(*) FROM numbers GROUP BY key").show()
 
-cached_rdd.collect()
+SQL Exam Notes
+Spark SQL uses Catalyst optimizer
+SQL, DataFrame, and Dataset share same execution engine
+Temp views are session-scoped
 
--------------------------------------------------------------------------------
+RDD vs DataFrame (Exam Favorite)
+RDD = low-level, no optimization
+DataFrame = optimized, easier, faster
+Use RDD only when low-level control is needed
 
-PERSIST() – MEMORY AND DISK
-
-from pyspark import StorageLevel
-
-persisted = grouped.persist(StorageLevel.MEMORY_AND_DISK)
-persisted.count()
-
--------------------------------------------------------------------------------
-
-FORCING RECOMPUTATION
-
-persisted.unpersist()
-persisted.collect()
-
-===============================================================================
-
-NARROW VS WIDE TRANSFORMATIONS (IMPORTANT CONCEPT)
-
-NARROW TRANSFORMATION
-
-rdd.map(lambda x: x + 1).filter(lambda x: x > 10).count()
-
-- No shuffle
-- Single stage
-- Faster execution
-
--------------------------------------------------------------------------------
-
-WIDE TRANSFORMATION
-
-rdd.map(lambda x: (x % 5, x)).groupByKey().count()
-
-- Shuffle occurs
-- Multiple stages
-- Expensive operation
-
-===============================================================================
-
-STOP THE SPARK CLUSTER
-
+Stop cluster
 docker-compose down
-
-===============================================================================
-
-NOTES
-
-- Always monitor the Spark UI when learning shuffles and stages
-- Prefer reduceByKey over groupByKey
-- Cache only when RDDs are reused
-
-===============================================================================
